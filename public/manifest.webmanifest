@@ -1,0 +1,17 @@
+{
+  "name": "My Baking Recipe",
+  "short_name": "Baking Recipe",
+  "description": "A simple English baking journal for recipes, photos, and reflections.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#2c7a7b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
