@@ -3,6 +3,8 @@ import {
   BookOpen,
   Camera,
   Edit3,
+  Images,
+  Share2,
   Plus,
   Search,
   Trash2,
@@ -11,11 +13,12 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
-import { useObjectUrls } from './hooks/useObjectUrls'
+import { PhotoImage } from './components/PhotoImage'
 import { recipeRepository as defaultRecipeRepository } from './repositories/indexedDbRecipeRepository'
 import type { RecipeRepository } from './repositories/recipeRepository'
 import { fileToRecipePhoto } from './services/photoStorage'
 import { createStep, stepsToSearchText } from './services/recipeNormalization'
+import { shareRecipeImage } from './services/shareImage'
 import type { Recipe, RecipeDraft, RecipePhoto, RecipeStep } from './types'
 
 type View =
@@ -272,16 +275,18 @@ function RecipeCard({
   recipe: Recipe
   onOpen: () => void
 }) {
-  const urls = useObjectUrls(recipe.photos.slice(0, 1))
+  const coverPhoto = recipe.photos[0]
 
   return (
     <button className="recipe-card" type="button" onClick={onOpen}>
       <div className="card-photo">
-        {urls[0] ? (
-          <img src={urls[0]} alt="" />
-        ) : (
-          <Camera size={28} aria-hidden="true" />
-        )}
+        <PhotoImage
+          key={coverPhoto?.id ?? 'empty-cover'}
+          photo={coverPhoto}
+          alt=""
+          fallbackClassName="photo-fallback"
+          fallbackSize={28}
+        />
       </div>
       <div className="card-body">
         <h2>{recipe.title || 'Untitled bake'}</h2>
@@ -301,11 +306,40 @@ function RecipeDetail({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const urls = useObjectUrls(recipe.photos)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+  const [isSharing, setIsSharing] = useState(false)
+
+  const shareRecipe = async () => {
+    setIsSharing(true)
+    setShareStatus(null)
+
+    try {
+      const result = await shareRecipeImage(recipe)
+      setShareStatus(
+        result === 'shared'
+          ? 'Recipe image is ready to share.'
+          : 'Recipe image was downloaded. Send it in KakaoTalk.',
+      )
+    } catch {
+      setShareStatus('Could not create the recipe image.')
+    } finally {
+      setIsSharing(false)
+    }
+  }
 
   return (
     <section className="screen detail-screen">
       <div className="detail-actions">
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => void shareRecipe()}
+          aria-label="Share recipe image"
+          title="Share recipe image"
+          disabled={isSharing}
+        >
+          <Share2 size={19} aria-hidden="true" />
+        </button>
         <button className="icon-button" type="button" onClick={onEdit} aria-label="Edit recipe" title="Edit recipe">
           <Edit3 size={19} aria-hidden="true" />
         </button>
@@ -313,11 +347,18 @@ function RecipeDetail({
           <Trash2 size={19} aria-hidden="true" />
         </button>
       </div>
+      {shareStatus && <p className="share-status">{shareStatus}</p>}
 
       <div className="photo-strip">
-        {urls.length > 0 ? (
-          urls.map((url, index) => (
-            <img key={url} src={url} alt={`${recipe.title} photo ${index + 1}`} />
+        {recipe.photos.length > 0 ? (
+          recipe.photos.map((photo, index) => (
+            <PhotoImage
+              key={photo.id}
+              photo={photo}
+              alt={`${recipe.title} photo ${index + 1}`}
+              fallbackClassName="photo-placeholder"
+              fallbackSize={32}
+            />
           ))
         ) : (
           <div className="photo-placeholder">
@@ -377,9 +418,7 @@ function StepDetailItem({
   index: number
   step: RecipeStep
 }) {
-  const urls = useObjectUrls(step.photos)
-
-  if (!step.text.trim() && urls.length === 0) {
+  if (!step.text.trim() && step.photos.length === 0) {
     return null
   }
 
@@ -388,13 +427,15 @@ function StepDetailItem({
       <div className="step-number">{index + 1}</div>
       <div>
         {step.text.trim() && <p>{step.text}</p>}
-        {urls.length > 0 && (
+        {step.photos.length > 0 && (
           <div className="inline-photo-grid">
-            {urls.map((url, photoIndex) => (
-              <img
-                key={url}
-                src={url}
+            {step.photos.map((photo, photoIndex) => (
+              <PhotoImage
+                key={photo.id}
+                photo={photo}
                 alt={`Step ${index + 1} photo ${photoIndex + 1}`}
+                fallbackClassName="inline-photo-fallback"
+                fallbackSize={24}
               />
             ))}
           </div>
@@ -427,7 +468,6 @@ function RecipeForm({
   )
   const [isSaving, setIsSaving] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
-  const urls = useObjectUrls(draft.photos)
 
   const updateField = (field: keyof RecipeDraft, value: string) => {
     setDraft((current) => ({ ...current, [field]: value }))
@@ -550,24 +590,38 @@ function RecipeForm({
           </button>
         </div>
 
-        <label className="photo-dropzone">
-          <Camera size={24} aria-hidden="true" />
-          <span>Add photos</span>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            onChange={(event) => void addPhotos(event.target.files)}
-          />
-        </label>
+        <div className="photo-picker">
+          <p className="photo-picker-title">Add photos</p>
+          <div className="photo-picker-actions">
+            <label className="photo-picker-button">
+              <Images size={18} aria-hidden="true" />
+              Gallery
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) => void addPhotos(event.target.files)}
+              />
+            </label>
+            <label className="photo-picker-button">
+              <Camera size={18} aria-hidden="true" />
+              Camera
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => void addPhotos(event.target.files)}
+              />
+            </label>
+          </div>
+        </div>
         {photoError && <p className="field-error">{photoError}</p>}
 
         {draft.photos.length > 0 && (
           <div className="photo-preview-grid">
             {draft.photos.map((photo, index) => (
               <div className="photo-preview" key={photo.id}>
-                {urls[index] && <img src={urls[index]} alt="" />}
+                <PhotoImage photo={photo} alt={`Recipe photo ${index + 1}`} />
                 <button
                   type="button"
                   className="mini-button"
@@ -663,8 +717,6 @@ function StepEditor({
   onRemovePhoto: (photoId: string) => void
   onRemoveStep: () => void
 }) {
-  const urls = useObjectUrls(step.photos)
-
   return (
     <div className="step-editor-card">
       <div className="step-editor-header">
@@ -687,22 +739,36 @@ function StepEditor({
           onChange={(event) => onTextChange(event.target.value)}
         />
       </label>
-      <label className="step-photo-button">
-        <Camera size={16} aria-hidden="true" />
-        Add step photos
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          onChange={(event) => onAddPhotos(event.target.files)}
-        />
-      </label>
+      <div className="step-photo-actions">
+        <label className="step-photo-button">
+          <Images size={16} aria-hidden="true" />
+          Gallery
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => onAddPhotos(event.target.files)}
+          />
+        </label>
+        <label className="step-photo-button">
+          <Camera size={16} aria-hidden="true" />
+          Camera
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => onAddPhotos(event.target.files)}
+          />
+        </label>
+      </div>
       {step.photos.length > 0 && (
         <div className="photo-preview-grid compact">
           {step.photos.map((photo, photoIndex) => (
             <div className="photo-preview" key={photo.id}>
-              {urls[photoIndex] && <img src={urls[photoIndex]} alt="" />}
+              <PhotoImage
+                photo={photo}
+                alt={`Step ${index + 1} photo ${photoIndex + 1}`}
+              />
               <button
                 type="button"
                 className="mini-button"

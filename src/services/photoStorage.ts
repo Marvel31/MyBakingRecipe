@@ -1,6 +1,8 @@
 import type { RecipePhoto } from '../types'
 import { compressImageFile } from './imageCompression'
 
+const objectUrlCache = new Map<string, string>()
+
 function createPhotoId() {
   if (crypto.randomUUID) {
     return `photo_${crypto.randomUUID()}`
@@ -30,7 +32,15 @@ export function photoToObjectUrl(photo: RecipePhoto): string | undefined {
   }
 
   if (photo.blob) {
-    return URL.createObjectURL(photo.blob)
+    const cacheKey = `${photo.id}:${photo.size}:${photo.createdAt}`
+    const cachedUrl = objectUrlCache.get(cacheKey)
+    if (cachedUrl) {
+      return cachedUrl
+    }
+
+    const url = URL.createObjectURL(photo.blob)
+    objectUrlCache.set(cacheKey, url)
+    return url
   }
 
   return undefined

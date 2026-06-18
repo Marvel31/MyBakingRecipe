@@ -150,6 +150,22 @@
   object-fit: cover;
 }
 
+.photo-fallback,
+.inline-photo-fallback,
+.photo-preview > div {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--text-soft);
+  background: var(--muted);
+}
+
+.inline-photo-fallback {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+}
+
 .card-body {
   padding: 14px;
 }
@@ -232,6 +248,15 @@
   justify-content: flex-end;
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.share-status {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(44, 122, 123, 0.2);
+  border-radius: 8px;
+  color: var(--accent);
+  background: rgba(44, 122, 123, 0.08);
 }
 
 .photo-strip {
@@ -342,6 +367,7 @@
 }
 
 .small-text-button,
+.photo-picker-button,
 .step-photo-button {
   display: inline-flex;
   min-height: 36px;
@@ -381,26 +407,36 @@
   padding: 0 12px;
 }
 
-.step-photo-button input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.photo-dropzone {
+.photo-picker {
   display: grid;
-  min-height: 130px;
-  place-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px;
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
-  color: var(--text-soft);
   background: var(--muted);
-  cursor: pointer;
 }
 
-.photo-dropzone input {
+.photo-picker-title {
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.photo-picker-actions,
+.step-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photo-picker-button {
+  flex: 1 1 150px;
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.photo-picker-button input,
+.step-photo-button input {
   position: absolute;
   width: 1px;
   height: 1px;
