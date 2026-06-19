@@ -121,8 +121,9 @@ function App({ repository = defaultRecipeRepository }: AppProps) {
           : await repository.create(draft)
       await refreshRecipes()
       setView({ name: 'detail', id: saved.id })
-    } catch {
-      setError('Could not save this recipe.')
+    } catch (error) {
+      console.error('Could not save this recipe.', error)
+      setError(`Could not save this recipe. ${getErrorMessage(error)}`)
     }
   }
 
@@ -132,8 +133,9 @@ function App({ repository = defaultRecipeRepository }: AppProps) {
       await repository.delete(id)
       await refreshRecipes()
       setView({ name: 'list' })
-    } catch {
-      setError('Could not delete this recipe.')
+    } catch (error) {
+      console.error('Could not delete this recipe.', error)
+      setError(`Could not delete this recipe. ${getErrorMessage(error)}`)
     }
   }
 
@@ -792,6 +794,23 @@ function formatDate(value: string) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value))
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message
+  }
+
+  return 'Please check the console for details.'
 }
 
 export default App
